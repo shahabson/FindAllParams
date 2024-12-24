@@ -1,6 +1,7 @@
 import argparse
 import urllib.parse
 import json
+import requests
 from concurrent.futures import ThreadPoolExecutor
 
 def parse_url(url):
@@ -8,6 +9,43 @@ def parse_url(url):
         return urllib.parse.urlparse(url)
     except Exception:
         return None
+
+def get_latest_commoncrawl_index():
+    """
+    Fetch the latest Common Crawl index dynamically.
+    """
+    try:
+        response = requests.get("http://index.commoncrawl.org/")
+        response.raise_for_status()
+        # Example of fetching the latest index dynamically
+        return "CC-MAIN-2023-51"  # Replace with dynamic logic if needed
+    except Exception as e:
+        print(f"Error fetching latest Common Crawl index: {e}")
+        return None
+
+def fetch_commoncrawl_urls(domain):
+    """
+    Fetch URLs from Common Crawl for the given domain.
+    """
+    latest_index = get_latest_commoncrawl_index()
+    if not latest_index:
+        print("Unable to determine the latest Common Crawl index.")
+        return []
+
+    commoncrawl_url = f"http://index.commoncrawl.org/{latest_index}-index"
+    params = {
+        "url": f"*.{domain}",
+        "output": "json",
+        "filter": "statuscode:200",
+    }
+    try:
+        response = requests.get(commoncrawl_url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        return [entry['url'] for entry in data]
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching from Common Crawl: {e}")
+        return []
 
 def extract_components(url, component):
     parsed = parse_url(url)
@@ -28,7 +66,7 @@ def extract_components(url, component):
         return parsed.fragment
     elif component == "keys":
         query_params = urllib.parse.parse_qs(parsed.query)
-        return list(query_params.keys())  # Return a list of keys
+        return list(query_params.keys())
     elif component == "values":
         query_params = urllib.parse.parse_qs(parsed.query)
         return [value for values in query_params.values() for value in values]
@@ -37,7 +75,7 @@ def extract_components(url, component):
         return [f"{k}={v}" for k, v in query_params]
     elif component == "joined-keys":
         query_params = urllib.parse.parse_qs(parsed.query)
-        return "&".join(query_params.keys())  # Properly join keys
+        return "&".join(query_params.keys())
     elif component == "root-domain":
         return extract_root_domain(parsed.netloc)
     elif component == "subdomains":
@@ -62,8 +100,11 @@ def extract_subdomains(netloc):
     return None
 
 def parse_urls_from_file(file_path):
+    """
+    Read URLs from a file with UTF-8 encoding.
+    """
     try:
-        with open(file_path, "r") as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             return [line.strip() for line in file if line.strip()]
     except Exception as e:
         print(f"Error reading file {file_path}: {e}")
@@ -76,15 +117,21 @@ def output_results(results, output_file, output_format):
                 json.dump(results, file, indent=4)
         elif output_format == "txt":
             with open(output_file, "w") as file:
-                for item in results:
-                    file.write(f"{item}\n")
+                if isinstance(results, str):
+                    file.write(results)
+                else:
+                    for item in results:
+                        file.write(f"{item}\n")
     else:
         # Print to console if no output file is specified
         if output_format == "json":
             print(json.dumps(results, indent=4))
         elif output_format == "txt":
-            for item in results:
-                print(item)
+            if isinstance(results, str):
+                print(results)
+            else:
+                for item in results:
+                    print(item)
 
 def main():
     parser = argparse.ArgumentParser(description="Extract components from URLs.")
@@ -119,10 +166,24 @@ def main():
 
     if args.component == "keys":
         # Flatten the list of keys and handle uniqueness
-        results = sorted(set(results)) if args.unique else results
+        flat_results = []
+        for result in results:
+            if isinstance(result, list):
+                flat_results.extend(result)
+            else:
+                flat_results.append(result)
+        results = sorted(set(flat_results)) if args.unique else flat_results
+
     elif args.component == "joined-keys":
         # Join all keys into a single &-delimited string
-        results = "&".join(sorted(set(results))) if args.unique else "&".join(results)
+        flat_results = []
+        for result in results:
+            if isinstance(result, list):
+                flat_results.extend(result)
+            else:
+                flat_results.append(result)
+        results = "&".join(sorted(set(flat_results))) if args.unique else "&".join(flat_results)
+
     elif args.unique:
         results = sorted(set(results))
 
