@@ -1,30 +1,33 @@
-# README for Final Second Script
-
 ## Overview
-The second script is a URL parsing tool. It extracts specific components from URLs, such as the scheme, hostname, path, query parameters, and more.
+This script extracts various components from URLs, including query parameters, paths, domains, and more. It also supports advanced features such as joining query parameter keys into a single string and ensuring unique results. The script is multithreaded for faster processing of large URL lists.
 
-### Features:
-- Extract specific URL components (e.g., scheme, path, query keys).
-- Parse subdomains and root domains.
-- Multithreaded processing for handling large inputs.
-- Option to output unique results.
-- Flexible output formats (TXT or JSON).
+### Features
+- Extract specific URL components:
+  - Scheme (`http`, `https`, etc.)
+  - Netloc (host and port)
+  - Path (e.g., `/users`)
+  - Query string components (keys, values, key-value pairs)
+  - Fragment (`#fragment`)
+  - Root domain and subdomains
+- Join query parameter keys into a single `&`-delimited string.
+- Ensure unique results.
+- Multithreaded processing for large input files.
+- Flexible output formats: JSON or TXT.
 
-## Usage
-
-### Prerequisites
+## Prerequisites
 - Python 3.6 or higher
 - Install required libraries:
   ```bash
   pip install requests
   ```
 
-### Command-Line Arguments
+## Usage
 
+### Command-Line Arguments
 | Argument        | Description                                                                 | Default    |
 |-----------------|-----------------------------------------------------------------------------|------------|
 | `--input`       | Input file containing URLs.                                                 | Required   |
-| `--component`   | Component to extract (e.g., scheme, path, query, keys, root-domain).         | Required   |
+| `--component`   | Component to extract (see supported components below).                      | Required   |
 | `--output`      | Output file to save results. If omitted, results are printed to the console.| None       |
 | `--format`      | Output format (json or txt).                                                | txt        |
 | `--unique`      | Ensure unique results.                                                      | False      |
@@ -34,32 +37,73 @@ The second script is a URL parsing tool. It extracts specific components from UR
 - `scheme`: Extracts the URL scheme (e.g., `http`, `https`).
 - `netloc`: Extracts the network location (e.g., `example.com`).
 - `path`: Extracts the path segments (e.g., `/users`).
+- `params`: Extracts the parameters (if any).
 - `query`: Extracts the raw query string.
-- `keys`: Extracts query string keys.
-- `values`: Extracts query string values.
+- `keys`: Extracts query string keys (one per line).
+- `values`: Extracts query string values (one per line).
 - `pairs`: Extracts key-value pairs from the query string.
+- `joined-keys`: Joins all query string keys into a single `&`-delimited string.
 - `root-domain`: Extracts the root domain (e.g., `example.com`).
 - `subdomains`: Extracts subdomains (e.g., `sub.example.com` → `sub`).
 
 ### Examples
 
-1. Extract root domains from `urls.txt` and save unique results:
+1. **Extract Query Keys**:
    ```bash
-   python script.py --input urls.txt --component root-domain --unique --output root_domains.txt
+   python script.py --input urls.txt --component keys
+   ```
+   Output:
+   ```
+   id
+   name
+   action
+   post_id
    ```
 
-2. Extract query keys into a JSON file:
+2. **Extract Unique Query Keys**:
    ```bash
-   python script.py --input urls.txt --component keys --format json --output query_keys.json
+   python script.py --input urls.txt --component keys --unique
+   ```
+   Output:
+   ```
+   action
+   id
+   name
+   post_id
    ```
 
-3. Extract paths and print results to the console:
+3. **Join Query Keys**:
    ```bash
-   python script.py --input urls.txt --component path
+   python script.py --input urls.txt --component joined-keys
+   ```
+   Output:
+   ```
+   id&name&action&post_id
    ```
 
-4. Process URLs with 4 threads:
+4. **Extract Root Domains**:
    ```bash
-   python script.py --input urls.txt --component query --threads 4
+   python script.py --input urls.txt --component root-domain
+   ```
+   Output:
+   ```
+   example.com
+   test.net
    ```
 
+5. **Save Results to a File**:
+   ```bash
+   python script.py --input urls.txt --component keys --output keys.txt
+   ```
+
+6. **Process URLs with Multiple Threads**:
+   ```bash
+   python script.py --input urls.txt --component keys --threads 4
+   ```
+
+## Notes
+- The script assumes that the input file contains one URL per line.
+- If `--unique` is specified, duplicate results are removed, and the output is sorted.
+
+## License
+This script is open-source and free to use under the MIT license.
