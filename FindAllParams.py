@@ -3,6 +3,11 @@ import urllib.parse
 import json
 import requests
 from concurrent.futures import ThreadPoolExecutor
+import sys
+import io
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 
 def parse_url(url):
     try:
