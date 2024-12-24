@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 def parse_url(url):
     try:
         return urllib.parse.urlparse(url)
-    except Exception as e:
+    except Exception:
         return None
 
 def extract_components(url, component):
@@ -28,13 +28,16 @@ def extract_components(url, component):
         return parsed.fragment
     elif component == "keys":
         query_params = urllib.parse.parse_qs(parsed.query)
-        return list(query_params.keys())
+        return list(query_params.keys())  # Return a list of keys
     elif component == "values":
         query_params = urllib.parse.parse_qs(parsed.query)
         return [value for values in query_params.values() for value in values]
     elif component == "pairs":
         query_params = urllib.parse.parse_qsl(parsed.query)
         return [f"{k}={v}" for k, v in query_params]
+    elif component == "joined-keys":
+        query_params = urllib.parse.parse_qs(parsed.query)
+        return "&".join(query_params.keys())  # Properly join keys
     elif component == "root-domain":
         return extract_root_domain(parsed.netloc)
     elif component == "subdomains":
@@ -86,7 +89,11 @@ def output_results(results, output_file, output_format):
 def main():
     parser = argparse.ArgumentParser(description="Extract components from URLs.")
     parser.add_argument("--input", help="Input file containing URLs.", required=True)
-    parser.add_argument("--component", help="Component to extract (scheme, netloc, path, params, query, fragment, keys, values, pairs, root-domain, subdomains).", required=True)
+    parser.add_argument(
+        "--component",
+        help="Component to extract (scheme, netloc, path, params, query, fragment, keys, values, pairs, joined-keys, root-domain, subdomains).",
+        required=True,
+    )
     parser.add_argument("--output", help="Output file to save results.", default=None)
     parser.add_argument("--format", help="Output format (json or txt).", default="txt")
     parser.add_argument("--unique", help="Ensure unique results.", action="store_true")
@@ -110,7 +117,13 @@ def main():
                 else:
                     results.append(result)
 
-    if args.unique:
+    if args.component == "keys":
+        # Flatten the list of keys and handle uniqueness
+        results = sorted(set(results)) if args.unique else results
+    elif args.component == "joined-keys":
+        # Join all keys into a single &-delimited string
+        results = "&".join(sorted(set(results))) if args.unique else "&".join(results)
+    elif args.unique:
         results = sorted(set(results))
 
     output_results(results, args.output, args.format)
